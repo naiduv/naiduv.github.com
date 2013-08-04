@@ -1,16 +1,23 @@
 body
 {
-	position: relative;
 	height: 320px;
 	width: 410px;
 	background-color:#ffffff;
+    font-family: 'Autour One', cursive;
+}
+
+#aboutme {
+    width: 200px;
+    position: fixed;
+    z-index: 3;
+    left: 85%;
 }
 
 #controlsview
 {
 	position: absolute;
 	background-color: #ffffff;
-	opacity: 0;
+	opacity: 1;
 	height: 300px;
 	width: 400px;
 	z-index: -1;

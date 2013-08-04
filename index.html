@@ -1,11 +1,12 @@
 
 <html>
 <head>
-<link rel="stylesheet" type="text/css" href="popup.css" />
+    <link rel="stylesheet" type="text/css" href="popup.css" />
+    <link href='http://fonts.googleapis.com/css?family=Autour+One' rel='stylesheet' type='text/css'>
 </head>
 <body>
 
-<div id="frame" style="position:fixed; font-size:10px; font-family: 'Lucida Console';">
+<div id="frame" style="position:fixed;">
 	<img id="creditsimg" src="chris.png"></img>
 	<canvas id="canvasm" height="900" width="1600" style="position:absolute; z-index:1;"></canvas>
 	<canvas id="canvass" height="900" width="1600" style="position:absolute; z-index:0"></canvas>
@@ -14,41 +15,27 @@
 		<div id="arrowkeys">
 			<img src="arrowkeys.png"></img>
 		</div>
-		<div id="text" style="padding-top:10px">
-			F - toggle faster/slower </br>
-			P - toggle pause</br>
+<!--		<div id="text" style="padding-top:10px">
+			F - toggle faster/slower
+			P - toggle pause
 			Space - jump
 			<!-- </br>
 			space - jump -->
 		</div>
 	</div>
+    
+    <div id="aboutme">
+        <div id="name">
+            Venkat Naidu
+        </div>
+        <a href="http://www.github.com/naiduv">Github</a>
+        <br/><a href="http://www.linkedin.com/pub/venkat-naidu/3b/566/a86">Linkedin</a>
+        <br/><a href ="https://chrome.google.com/webstore/search-extensions/naidu">Chrome Extensions</a>
+    </div>
 
-
-<!-- 	<div id="highscoresview" style="font-size:12px;">
-		<pre>
-		valentio 	Dec 08 2012 	4792
-		James K 	Dec 08 2012 	3003
-		Kayden 		Dec 07 2012 	2921
-		sadssad 	Dec 06 2012 	2856
-		skar pand 	Dec 06 2012 	2799
-		dario 		Dec 08 2012 	2637
-		Valentio 	Dec 06 2012 	2600
-		Hamood 		Dec 06 2012 	2527
-		123123 		Dec 07 2012 	2348
-		Aden 		Dec 08 2012 	2123
-		</pre>
-	</div>
- -->
-<!-- 	<div id="submitscore">
-		<form class="form">
-			<input class="nameinput" type="text" name="name"/>
-		</form>
-	</div>
- -->
-	<div id="score"><div class="num" style="color:black;float:right"></div></div>
-<!-- 	<a href="#" class="js-stats" style="position:fixed;bottom:1%; right:15%; z-index:3">stats</a> -->
-	<a href="#" class="menu-controls">controls</a>
-	<a href="#" class="menu-credits">credits</a>
+    <!-- 	<a href="#" class="js-stats" style="position:fixed;bottom:1%; right:15%; z-index:3">stats</a> -->
+<!--	<a href="#" class="menu-controls">controls</a>
+	<a href="#" class="menu-credits">credits</a>-->
 <!-- 	<a href="#" class="menu-submitscore">submit score</a> -->
 </div>
 </body>
