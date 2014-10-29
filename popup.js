@@ -38,8 +38,11 @@ var ctxm = canvasm.getContext("2d");
 var canvass = document.getElementById("canvass");
 var ctxs = canvass.getContext("2d");
 
-var sprites = document.createElement('image');
-sprites.src='sprites.png';
+// var sprites = document.createElement('image');
+// sprites.src='sprites.png';
+
+var sprites = new Image();
+sprites.src = "sprites.png";
 
 var curr_skier_sprite = "ski_right";
 var skierloc = new Point(10,10);
@@ -337,7 +340,9 @@ var drawobjectsfrommap = function() {
             continue;
 
         //only draw if y<-250 && y>canvas.height+200
-        drawobject(ctxm, map[i].type, map[i].loc);
+        debugger;
+        if(ctxm)
+	        drawobject(ctxm, map[i].type, map[i].loc);
     }
 };
 
@@ -397,13 +402,21 @@ var spriterects = [
 
 var drawskier = function(ctx, loc){
 	var rect = getSpriteRectFromName(curr_skier_sprite);
-	ctx.clearRect(0,0,canvass.width, canvass.height);
-	ctx.drawImage(sprites, rect.x, rect.y, rect.w, rect.h, loc.x, loc.y, rect.w, rect.h);
+	//clear skiier from ctx and redraw him in new location
+	debugger;
+	if(ctx){
+		ctx.clearRect(0,0,canvass.width, canvass.height);
+		ctx.drawImage(sprites, rect.x, rect.y, rect.w, rect.h, loc.x, loc.y, rect.w, rect.h);
+	}
 }
 
 var drawobject = function(ctx, obj, loc){
 	var rect = getSpriteRectFromName(obj);
-	ctx.drawImage(sprites, rect.x, rect.y, rect.w, rect.h, loc.x, loc.y, rect.w, rect.h);
+	//draw the object on map
+	debugger;
+	if(ctx){
+		ctx.drawImage(sprites, rect.x, rect.y, rect.w, rect.h, loc.x, loc.y, rect.w, rect.h);
+	}
 }
 
 document.onkeyup = function(e){
