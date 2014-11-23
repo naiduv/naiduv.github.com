@@ -44,6 +44,14 @@ var ctxs = canvass.getContext("2d");
 var sprites = new Image();
 sprites.src = "sprites.png";
 
+//firebase 
+var fb = new Firebase('https://skifreeapp.firebaseio.com/');
+fb.on('child_added', function(snapshot) {
+
+});
+
+
+
 var curr_skier_sprite = "ski_right";
 var skierloc = new Point(10,10);
 var map = Array();
@@ -605,5 +613,9 @@ var getSpriteRectFromName = function(name){
 
 	console.log('getSpriteRectFromName failed for name' + name);
 }
+
+
+
+
 
 
