@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+<body onkeydown="getKeyPress(event)">
+
+<p>Image to use:</p>
+    
+<img id="scream" src="Capture.PNG" alt="The Scream" width="220" height="277" style="display:none">
+
+<p>Canvas to fill:</p>
+    
+<canvas id="myCanvas" width="400" height="400"
+style="border:1px solid #d3d3d3;">
+    
+Your browser does not support the HTML5 canvas tag.</canvas>
+
+<p><button onclick="myCanvas()">Start Game</button>
+<button onclick="up()">Up</button>
+<button onclick="down()">Down</button>
+<button onclick="left()">Left</button>
+<button onclick="right()">Right</button></p>    
+
+
+</body>
+</html>
+
+<script src="scripts.js"></script>
