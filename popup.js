@@ -44,14 +44,6 @@ var ctxs = canvass.getContext("2d");
 var sprites = new Image();
 sprites.src = "sprites.png";
 
-//firebase 
-var fb = new Firebase('https://skifreeapp.firebaseio.com/');
-fb.on('child_added', function(snapshot) {
-
-});
-
-
-
 var curr_skier_sprite = "ski_right";
 var skierloc = new Point(10,10);
 var map = Array();
@@ -62,7 +54,30 @@ var score_font_color = "black";
 var finished_map = false;
 var faster = false;
 
-window.addEventListener("load", init); 
+var yeti_spawn_score = 2000;
+var yeti = null;
+var eaten_by_yeti = false;
+var yeti_eating_timeout = null;
+var yeti_eating_sprites = [
+	"yeti_eating_1", "yeti_eating_2", "yeti_eating_3",
+	"yeti_eating_4", "yeti_eating_5", "yeti_eating_6"
+];
+var yeti_jump_sprites = [
+	"yeti_standing", "yeti_alert", "yeti_run_1", "yeti_run_2"
+];
+var yeti_jump_offsets = [0, -12, 6, -16];
+
+window.addEventListener("load", init);
+window.addEventListener("resize", resizeGame);
+
+function resizeGame() {
+	var w = window.innerWidth;
+	var h = window.innerHeight;
+	canvasm.width = w;
+	canvasm.height = h;
+	canvass.width = w;
+	canvass.height = h;
+}
 
 var toggleshowcontrols = function(){
 	$("#controlsview").toggleClass("show");
@@ -114,12 +129,37 @@ $('a').live('click', function(e) {
 });
  
 function init(){
-	//we're ready for the loop
+	resizeGame();
 	_gaq.push(['_trackEvent', 'game', 'started']);
-	skierloc = new Point(canvass.width/2, canvass.height/2-60);
-	score = 0;
-	addFirstObjects();
+	resetGame();
 	mainloop();
+}
+
+function resetGame() {
+	if (yeti_eating_timeout) {
+		clearTimeout(yeti_eating_timeout);
+		yeti_eating_timeout = null;
+	}
+	clearInterval(jumpMoveUpIntervalId);
+	clearInterval(jumpMoveDownIntervalId);
+
+	map = [];
+	yeti = null;
+	eaten_by_yeti = false;
+	crash = false;
+	not_going_down = true;
+	curr_skier_sprite = "ski_right";
+	score = 0;
+	jumping = false;
+	skier_elev = 0;
+	skierloc = new Point(canvass.width/2, canvass.height/2-60);
+
+	addFirstObjects();
+	addSkiLift();
+
+	ctxm.clearRect(0, 0, canvasm.width, canvasm.height);
+	ctxs.clearRect(0, 0, canvass.width, canvass.height);
+	drawskier(ctxs, skierloc);
 }
 
 // var highscores;
@@ -178,6 +218,8 @@ var firstobjs = [{ hard: false, loc: new Point(30, 190), type: "sign_slalom" },
 
 ];
 
+var skiLiftObjs =  [{ hard: true, loc: new Point(100, 700), type: "ski_lift_pole" }];   
+
 var addFirstObjects = function()
 {
 	for(var i=0; i<firstobjs.length; i++){
@@ -185,6 +227,17 @@ var addFirstObjects = function()
 		mo.hard = firstobjs[i].hard;
 		mo.loc = firstobjs[i].loc;
 		mo.type = firstobjs[i].type;
+		map.push(mo);
+	}
+}
+
+var addSkiLift = function(){
+    var num_lift_poles = 100;
+    for(var i=0; i<100; i++){
+		var mo = new map_object();
+		mo.hard = skiLiftObjs[0].hard;
+		mo.loc = new Point(skiLiftObjs[0].loc.x, skiLiftObjs[0].loc.y+(i*900));
+		mo.type = skiLiftObjs[0].type;
 		map.push(mo);
 	}
 }
@@ -198,7 +251,11 @@ var mapcapped = function(){
 }
 
 var oncrash = function(){
+    if(jumping)
+        jumping=false;
 	if(!crash)
+		return;
+	if (eaten_by_yeti)
 		return;
 	crash=false;
 	//console.log('crashed')
@@ -220,22 +277,160 @@ var mainloop = function(){
 	if(paused)
 		return;
 
-	if(crash)
+	if (!yeti && score >= yeti_spawn_score) {
+		spawnYeti();
+	}
+
+	if(crash && !eaten_by_yeti)
 		return;
 
-	score += not_going_down ? 0:1;
-	// if(not_going_down)
-	// 	score_font_color="red";
-	// else
-	//	score_font_color="green";
-	
-	addobjecttomap();
+	if (!crash) {
+		score += not_going_down ? 0:1;
+		addobjecttomap();
+		updateYeti();
+	} else if (yeti && yeti.caught) {
+		updateYetiJump();
+	}
+
 	clearmap();
 	drawobjectsfrommap();
-	drawskier(ctxs, skierloc);
+	drawYeti(ctxm);
+	drawSkierOrYeti();
 	logscore();
 	//checkfinish();
 }
+
+var spawnYeti = function() {
+	var yetiRect = getSpriteRectFromName("yeti_run_1");
+	yeti = {
+		loc: new Point(skierloc.x - yetiRect.w / 2 + 15, canvass.height + 40),
+		runFrame: 0,
+		runTick: 0,
+		eating: false,
+		eatingStage: 0,
+		currentSprite: "yeti_run_1",
+		caught: false
+	};
+	_gaq.push(['_trackEvent', 'game', 'yeti_spawned']);
+};
+
+var updateYeti = function() {
+	if (!yeti || yeti.eating || yeti.caught)
+		return;
+
+	var chaseSpeedY = 6;
+	var chaseSpeedX = 3;
+
+	if (yeti.loc.y > skierloc.y - 10)
+		yeti.loc.y -= chaseSpeedY;
+
+	if (yeti.loc.x < skierloc.x - 5)
+		yeti.loc.x += chaseSpeedX;
+	else if (yeti.loc.x > skierloc.x + 5)
+		yeti.loc.x -= chaseSpeedX;
+
+	yeti.runTick = (yeti.runTick || 0) + 1;
+	if (yeti.runTick % 8 === 0) {
+		yeti.runFrame = 1 - yeti.runFrame;
+		yeti.currentSprite = yeti.runFrame ? "yeti_run_2" : "yeti_run_1";
+	}
+
+	if (checkYetiCollision())
+		startYetiEating();
+};
+
+var updateYetiJump = function() {
+	yeti.jumpTick = (yeti.jumpTick || 0) + 1;
+	if (yeti.jumpTick % 10 !== 0)
+		return;
+
+	yeti.jumpFrame = ((yeti.jumpFrame || 0) + 1) % yeti_jump_sprites.length;
+	yeti.currentSprite = yeti_jump_sprites[yeti.jumpFrame];
+	yeti.loc.y = yeti.jumpBaseY + yeti_jump_offsets[yeti.jumpFrame];
+};
+
+var checkYetiCollision = function() {
+	var yetiRect = getSpriteRectFromName(yeti.currentSprite);
+	var skierrect = getSpriteRectFromName(curr_skier_sprite);
+	var yetiColl = new Rect(yeti.loc.x + 8, yeti.loc.y + 8, yetiRect.w - 16, yetiRect.h - 16);
+	var skierColl = new Rect(skierloc.x + 5, skierloc.y + 10, skierrect.w - 10, skierrect.h - 20);
+	return rectscollide(yetiColl, skierColl) && skier_elev <= 0;
+};
+
+var startYetiEating = function() {
+	yeti.eating = true;
+	yeti.eatingStage = 0;
+	eaten_by_yeti = true;
+	crash = true;
+	not_going_down = true;
+	if (jumping) {
+		jumping = false;
+		clearInterval(jumpMoveUpIntervalId);
+		clearInterval(jumpMoveDownIntervalId);
+		skier_elev = 0;
+	}
+	_gaq.push(['_trackEvent', 'game', 'eaten_by_yeti']);
+	showNextEatingFrame();
+};
+
+var showNextEatingFrame = function() {
+	if (!yeti)
+		return;
+
+	if (yeti.eatingStage >= yeti_eating_sprites.length) {
+		yeti.caught = true;
+		yeti.eating = false;
+		yeti.jumpFrame = 0;
+		yeti.jumpTick = 0;
+		yeti.jumpBaseY = yeti.loc.y;
+		yeti.currentSprite = yeti_jump_sprites[0];
+		yeti.loc.y = yeti.jumpBaseY + yeti_jump_offsets[0];
+		redrawYetiScene();
+		return;
+	}
+
+	yeti.currentSprite = yeti_eating_sprites[yeti.eatingStage];
+	yeti.loc = new Point(skierloc.x - 12, skierloc.y - 30);
+	yeti.eatingStage++;
+	redrawYetiScene();
+	yeti_eating_timeout = setTimeout(showNextEatingFrame, 450);
+};
+
+var drawRestartPrompt = function(ctx) {
+	ctx.fillStyle = "black";
+	ctx.font = "14px 'Lucida Console', monospace";
+	ctx.textAlign = "center";
+	ctx.fillText("Press Space to restart", canvass.width / 2, 30);
+};
+
+var redrawYetiScene = function() {
+	clearmap();
+	drawobjectsfrommap();
+	drawYeti(ctxm);
+	ctxs.clearRect(0, 0, canvass.width, canvass.height);
+	drawobject(ctxs, yeti.currentSprite, yeti.loc);
+	if (yeti.caught)
+		drawRestartPrompt(ctxs);
+};
+
+var drawYeti = function(ctx) {
+	if (!yeti || yeti.eating || eaten_by_yeti)
+		return;
+	drawobject(ctx, yeti.currentSprite, yeti.loc);
+};
+
+var drawSkierOrYeti = function() {
+	if (eaten_by_yeti || (yeti && yeti.eating)) {
+		ctxs.clearRect(0, 0, canvass.width, canvass.height);
+		drawobject(ctxs, yeti.currentSprite, yeti.loc);
+		if (yeti && yeti.caught)
+			drawRestartPrompt(ctxs);
+		return;
+	}
+
+	if (!crash)
+		drawskier(ctxs, skierloc);
+};
 
 var logscore = function(){
 	if(score>0 && score % 300 == 0){
@@ -270,6 +465,7 @@ var map_object = function(){
 	this.automove = false;
 	this.movevector = new Point(0,0);
 	this.height = 0;
+    this.jump = 0;
 }
 
 // var new_map_object = function(type, loc, hard, auto, vector){
@@ -282,12 +478,12 @@ var map_object = function(){
 // 	return mo;
 // }
 
-var map_objects = [{o:"small_tree", h:10, hard:1 },
-		   {o:"big_rock", h:0, hard:1},
-		   {o:"small_rock", h:0, hard:1},
-		   {o:"burnt_tree", h:10, hard:1},
-		   {o:"big_tree", h:20, hard:1},
-		   {o:"rainbow", h:0, hard:0}];
+var map_objects = [{name:"small_tree", height:10, hard:1, jump:0 },
+		   {name:"big_rock", height:0, hard:1, jump:0},
+		   {name:"small_rock", height:0, hard:1, jump:0},
+		   {name:"burnt_tree", height:10, hard:1, jump:0},
+		   {name:"big_tree", height:20, hard:1, jump:0},
+		   {name:"rainbow", height:0, hard:0, jump:10}];
 
 var addobjecttomap = function(){
 	if(not_going_down)
@@ -297,10 +493,11 @@ var addobjecttomap = function(){
 	var ranpick = myurand(3*map_objects.length-1);
 	if(ranpick > map_objects.length-1)
 		return;
-	mo.type = map_objects[ranpick].o;
-	mo.height = map_objects[ranpick].h;
-        mo.hard = map_objects[ranpick].hard ? true:false;
+	mo.type = map_objects[ranpick].name;
+	mo.height = map_objects[ranpick].height;
+    mo.hard = map_objects[ranpick].hard ? true:false;
 	mo.loc = new Point(myrand(canvasm.width*2), canvasm.height);
+    mo.jump = map_objects[ranpick].jump;
 	map.push(mo);
 }
 
@@ -315,10 +512,10 @@ var drawobjectsfrommap = function() {
                 not_going_down = true;
                 setTimeout(oncrash, 700);
             } else {
-                //if (map[i].type == "rainbow") {
-                //    map[i].hit = true;
-                //    startJump(100, 10);
-                //}
+                if (map[i].type == "rainbow") {
+                    map[i].hit = true;
+                    startJump(100, map[i].jump);
+                }
             }
         }
 
@@ -326,6 +523,7 @@ var drawobjectsfrommap = function() {
         // 	map[i].loc.x +=5;
         // else if(curr_skier_sprite == 'ski_right')
         // 	map[i].loc.x -=5;
+        if (!eaten_by_yeti) {
         if (curr_skier_sprite == 'ski_down')
             map[i].loc.y -= 6;
         else if (curr_skier_sprite == "ski_jump_1")
@@ -342,6 +540,7 @@ var drawobjectsfrommap = function() {
         } else if (curr_skier_sprite == 'ski_down_right') {
             map[i].loc.y -= 5;
             map[i].loc.x -= 3;
+        }
         }
 
         if (map[i].loc.y < -250 && map[i].loc.y >= canvass.height + 200)
@@ -380,34 +579,6 @@ var checkcollision = function (type, loc, height) {
 		return false;
 }
 
-
-var spriterects = [
-    { "name": "ski_left", "rect": new Rect(0, 0, 30, 36), },
-    { "name": "ski_right", "rect": new Rect(30, 0, 30, 36), },
-    { "name": "ski_down_left", "rect": new Rect(60, 0, 30, 36), },
-    { "name": "ski_down_right", "rect": new Rect(90, 0, 30, 36), },
-    { "name": "ski_down", "rect": new Rect(120, 0, 30, 36), },
-    { "name": "ski_right_down", "rect": new Rectxy(232, 0, 260, 34), },
-    { "name": "ski_left_down", "rect": new Rectxy(262, 0, 287, 34), },
-    { "name": "ski_jump_1", "rect": new Rectxy(288, 0, 324, 34), },
-    { "name": "crash1", "rect": new Rect(155, 0, 30, 36), },
-    { "name": "crash2", "rect": new Rect(190, 0, 40, 36), },
-    { "name": "small_tree", "rect": new Rect(49, 93, 35, 40), },
-    { "name": "big_rock", "rect": new Rect(120, 114, 30, 16), },
-    { "name": "small_rock", "rect": new Rectxy(236, 115, 256, 130), },
-    { "name": "burnt_tree", "rect": new Rectxy(89, 99, 113, 127), },
-    { "name": "big_tree", "rect": new Rectxy(6, 61, 38, 127), },
-    { "name": "rainbow", "rect": new Rectxy(318, 288, 353, 299), },
-    { "name": "sign_slalom", "rect": new Rectxy(4, 183, 46, 221), },
-    { "name": "sign_freestyle", "rect": new Rectxy(54, 185, 97, 222), },
-    { "name": "sign_treeslalom", "rect": new Rectxy(100, 185, 147, 223), },
-    { "name": "sign_start_left", "rect": new Rectxy(155, 189, 202, 222), },
-    { "name": "sign_start_right", "rect": new Rectxy(202, 189, 249, 222), },
-    { "name": "sign_finish_left", "rect": new Rectxy(333, 189, 385, 222), },
-    { "name": "sign_finish_right", "rect": new Rectxy(385, 189, 440, 222), },
-    { "name": "ai_skier_1", "rect": new Rectxy(329, 53, 350, 83), },
-];
-
 var drawskier = function(ctx, loc){
 	var rect = getSpriteRectFromName(curr_skier_sprite);
 	//clear skiier from ctx and redraw him in new location
@@ -432,12 +603,16 @@ document.onkeyup = function(e){
 	switch(e.keyCode){
 		case 32: onSpace();
 		break;
+		case 65:	
 		case 37: onLeft();//drawskier(ctx, spriterects[0].rect, new Point(10,10));
 		break;
+		case 87:	
 		case 38: onUp();
 		break;
+		case 68:
 		case 39: onRight();//drawskier(ctx, spriterects[1].rect, new Point(10,10));
 		break;
+		case 83:	
 		case 40: onDown();
 		break;
 		case 70: onFButton();
@@ -478,9 +653,13 @@ var getNextLogicalSprite = function(curr, next){
 
 var jumping = false;
 var onSpace = function(){
-	console.log('onspace');
+	if (eaten_by_yeti && yeti && yeti.caught) {
+		resetGame();
+		return;
+	}
+	if (crash || eaten_by_yeti || jumping)
+		return;
 	startJump(10, 10);
-	//jump
 }
 
 var multiplyJump = function(){
@@ -563,13 +742,15 @@ var onUp = function(){
 }
 
 var onDown = function(){
-	if(crash) 		
+    if(crash || jumping) 		
 		return;
 	curr_skier_sprite = "ski_down";
 	not_going_down = false;
 }
 
 var onLeft = function(){
+    if(jumping)
+		return;
 	//if(crash) crash = false;
 
 	curr_skier_sprite = getNextLogicalSprite(curr_skier_sprite, -1);
@@ -588,6 +769,8 @@ var onLeft = function(){
 }
 
 var onRight = function(){
+    if(jumping)
+		return;
 	//if(crash) crash = false;
 
 	curr_skier_sprite = getNextLogicalSprite(curr_skier_sprite, 1);
@@ -613,9 +796,5 @@ var getSpriteRectFromName = function(name){
 
 	console.log('getSpriteRectFromName failed for name' + name);
 }
-
-
-
-
 
 
