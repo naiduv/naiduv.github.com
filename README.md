@@ -1,6 +1,6 @@
 # naiduv.github.com
 
-Interactive portfolio site — a Three.js globe with hoverable career checkpoints.
+A calm animated beach portfolio — drifting clouds, rolling waves, and cartoon characters wandering the sand.
 
 ## Local preview
 
@@ -10,6 +10,6 @@ python3 -m http.server 8080
 
 Open http://localhost:8080
 
-## Customize locations
+## Customize
 
-Edit the `LOCATIONS` array in `js/main.js` to update cities, roles, and descriptions.
+Edit `js/beach.js` — colors, cloud count, wave speed, character count, and beach props.
