@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Venkat Naidu — Portfolio</title>
+  <meta name="description" content="Interactive portfolio map — Venkat Naidu">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="app">
+    <canvas id="globe"></canvas>
+
+    <div class="scanlines" aria-hidden="true"></div>
+    <div class="vignette" aria-hidden="true"></div>
+
+    <header class="hud hud-top">
+      <div class="hud-block">
+        <p class="hud-label">Principal Software Engineer</p>
+        <h1 class="hud-title">VENKAT NAIDU</h1>
+        <p class="hud-subtitle">Career Map</p>
+      </div>
+      <nav class="hud-links" aria-label="Social links">
+        <a class="hud-link" href="https://github.com/naiduv" target="_blank" rel="noopener noreferrer">
+          <span class="link-key">[G]</span> GitHub
+        </a>
+        <a class="hud-link" href="https://linkedin.com/in/naiduv" target="_blank" rel="noopener noreferrer">
+          <span class="link-key">[L]</span> LinkedIn
+        </a>
+      </nav>
+    </header>
+
+    <aside class="hud hud-left">
+      <p class="hud-label">MISSION BRIEF</p>
+      <p class="hud-text">Hover checkpoints for career details. Intercept wandering signals for random tech &amp; AI facts.</p>
+      <ul class="legend" id="legend"></ul>
+    </aside>
+
+    <footer class="hud hud-bottom">
+      <p class="hud-hint"><span class="blink">▸</span> SCAN CHECKPOINTS · DRAG TO ROTATE · SCROLL TO ZOOM</p>
+      <p class="hud-coords" id="coords">LAT — · LNG —</p>
+    </footer>
+
+    <div class="tooltip" id="tooltip" hidden>
+      <div class="tooltip-career" id="tooltip-career">
+        <div class="tooltip-header">
+          <span class="tooltip-icon" id="tooltip-icon">◆</span>
+          <div>
+            <p class="tooltip-city" id="tooltip-city"></p>
+            <p class="tooltip-period" id="tooltip-period"></p>
+          </div>
+        </div>
+        <p class="tooltip-role" id="tooltip-role"></p>
+        <p class="tooltip-desc" id="tooltip-desc"></p>
+      </div>
+      <div class="tooltip-fact" id="tooltip-fact">
+        <p class="tooltip-fact-label">SIGNAL DECODED</p>
+        <p class="tooltip-fact-title" id="tooltip-fact-title"></p>
+        <p class="tooltip-fact-text" id="tooltip-fact-text">Scanning knowledge base…</p>
+        <a class="tooltip-fact-link" id="tooltip-fact-link" href="#" target="_blank" rel="noopener noreferrer">Wikipedia →</a>
+      </div>
+      <div class="tooltip-bar"><div class="tooltip-bar-fill"></div></div>
+    </div>
+  </div>
+
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://unpkg.com/three@0.167.1/build/three.module.js",
+        "three/addons/": "https://unpkg.com/three@0.167.1/examples/jsm/"
+      }
+    }
+  </script>
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>
