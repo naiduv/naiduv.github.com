@@ -7,7 +7,6 @@
   var SUN = "#ffd028";
   var CLOUD = "#d4eef5";
   var CLOUD_HIGHLIGHT = "#eef8fc";
-  var CLOUD_OUTLINE = "rgba(130, 170, 195, 0.45)";
   var OCEAN_LIGHT = "#6ec4de";
   var OCEAN_MID = "#4aafd0";
   var OCEAN_DEEP = "#2f96b8";
@@ -168,15 +167,6 @@
     ctx.beginPath();
     ctx.ellipse(-10, -4, 18, 10, 0, 0, Math.PI * 2);
     ctx.fill();
-
-    ctx.lineWidth = Math.max(1.2, width * 0.0016);
-    ctx.lineCap = "round";
-    ctx.strokeStyle = CLOUD_OUTLINE;
-    puffs.forEach(function (p) {
-      ctx.beginPath();
-      ctx.ellipse(p[0], p[1], p[2], p[3], 0, 0, Math.PI * 2);
-      ctx.stroke();
-    });
 
     ctx.restore();
   }
