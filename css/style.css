@@ -54,6 +54,7 @@ body {
 
 .tagline {
   margin-top: 0.15rem;
+  margin-left: 0.45rem;
   font-family: "Inter", sans-serif;
   font-size: 0.8rem;
   font-weight: 500;
@@ -65,10 +66,10 @@ body {
   display: flex;
   gap: 1.25rem;
   font-family: "Caveat", cursive;
-  font-size: clamp(1.2rem, 2.5vw, 1.6rem);
 }
 
 .overlay-links a {
+  font-size: clamp(1.55rem, 3.2vw, 2.05rem);
   color: #3d6d88;
   text-decoration: none;
   transition: color 0.2s, opacity 0.2s;

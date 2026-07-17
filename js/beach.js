@@ -25,6 +25,8 @@
   ];
   var HAT_COLORS = ["#f2cf3a", "#ff6b6b", "#4ecdc4", "#ffffff", "#ff8fab", "#3d6d88", "#ffe66d"];
   var HAT_TYPES = ["sun", "cap", "bucket"];
+  var PERSON_SIZE = 0.5;
+  var TOWEL_SIZE = 0.5;
 
   var canvas = document.getElementById("scene");
   if (!canvas) return;
@@ -287,8 +289,8 @@
       towels.push({
         x: tx,
         y: sandYAt(tx, 0) + 18 + sandH * spec.y * 0.35,
-        w: width * spec.w,
-        h: width * spec.h,
+        w: width * spec.w * TOWEL_SIZE,
+        h: width * spec.h * TOWEL_SIZE,
         rot: spec.rot,
         c1: colors[0],
         c2: colors[1],
@@ -347,7 +349,7 @@
   }
 
   function characterScale(c) {
-    return c.scale * Math.max(0.7, width / 1100);
+    return c.scale * PERSON_SIZE * Math.max(0.7, width / 1100);
   }
 
   function characterBounds(c) {
@@ -425,7 +427,7 @@
   }
 
   function drawStickPerson(x, y, scale, facing, walkPhase, sitting, shirt, shorts, hat) {
-    var s = scale * Math.max(0.7, width / 1100);
+    var s = scale * PERSON_SIZE * Math.max(0.7, width / 1100);
     var bob = sitting ? Math.sin(time * 1.5) * 1.5 : 0;
 
     ctx.save();
