@@ -80,6 +80,24 @@ body {
   opacity: 0.85;
 }
 
+body.night-mode {
+  background: #142438;
+}
+
+body.night-mode .name,
+body.night-mode .tagline,
+body.night-mode .overlay-links a {
+  color: #dbeef7;
+}
+
+body.night-mode .tagline {
+  color: rgba(219, 238, 247, 0.82);
+}
+
+body.night-mode .overlay-links a:hover {
+  color: #ffffff;
+}
+
 @media (max-width: 640px) {
   .overlay {
     flex-direction: column;

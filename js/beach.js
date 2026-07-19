@@ -14,6 +14,45 @@
   var SAND = "#f2cf3a";
   var SAND_SHADOW = "#e0b92a";
 
+  var DAY = {
+    skyTop: "#a8d8ea",
+    skyBottom: "#c9e9f2",
+    sun: "#ffd028",
+    cloud: "#d4eef5",
+    cloudHi: "#eef8fc",
+    oceanLight: "#6ec4de",
+    oceanMid: "#4aafd0",
+    oceanDeep: "#2f96b8",
+    foam: "#e8f7fb",
+    sand: "#f2cf3a",
+    sandShadow: "#e0b92a",
+    outline: "#1e4d66",
+  };
+
+  var NIGHT = {
+    skyTop: "#070f1c",
+    skyBottom: "#142438",
+    sun: "#ffd028",
+    cloud: "#243447",
+    cloudHi: "#2f4258",
+    oceanLight: "#1a4568",
+    oceanMid: "#123552",
+    oceanDeep: "#0d2840",
+    foam: "#1a3a52",
+    sand: "#6f5c38",
+    sandShadow: "#4a3d24",
+    outline: "#7a9cb5",
+  };
+
+  var SUNRISE_HOUR = 6;
+  var SUNSET_HOUR = 20;
+  var BEACH_OPEN_HOUR = 9;
+  var BEACH_CLOSE_HOUR = 19;
+  var TWILIGHT_HOURS = 0.75;
+
+  var SKY_RATIO = 0.6;
+  var OCEAN_SHARE = 0.39;
+
   var SHIRT_COLORS = ["#ff6b6b", "#4ecdc4", "#ffe66d", "#ff8fab", "#95e1d3", "#f38181"];
   var SHORT_COLORS = ["#3d6d88", "#2a5268", "#5a8fad", "#234563"];
   var TOWEL_COLORS = [
@@ -42,6 +81,12 @@
   };
 
   var coastSeeds = [];
+  var stars = [];
+  var timeOfDay = {
+    hours: 12,
+    nightFactor: 0,
+    sun: null,
+  };
 
   function rand(min, max) {
     return min + Math.random() * (max - min);
@@ -59,6 +104,125 @@
     };
   }
 
+  function parseHex(hex) {
+    var n = parseInt(hex.slice(1), 16);
+    return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 };
+  }
+
+  function lerpColor(from, to, amount) {
+    var t = Math.max(0, Math.min(1, amount));
+    var a = parseHex(from);
+    var b = parseHex(to);
+    var r = Math.round(a.r + (b.r - a.r) * t);
+    var g = Math.round(a.g + (b.g - a.g) * t);
+    var bl = Math.round(a.b + (b.b - a.b) * t);
+    return "#" + ((1 << 24) + (r << 16) + (g << 8) + bl).toString(16).slice(1);
+  }
+
+  function getTimeOverride() {
+    var search = window.location.search || "";
+    if (!search) return null;
+
+    var value = null;
+    search.slice(1).split("&").some(function (part) {
+      var pair = part.split("=");
+      if (decodeURIComponent(pair[0]) === "time" && pair[1] !== undefined) {
+        value = decodeURIComponent(pair[1]).replace(",", ".");
+        return true;
+      }
+      return false;
+    });
+
+    if (value === null) return null;
+
+    var parts = value.split(":");
+    var hours = parts.length > 1
+      ? parseFloat(parts[0]) + parseFloat(parts[1]) / 60
+      : parseFloat(value);
+
+    if (isNaN(hours)) return null;
+    return ((hours % 24) + 24) % 24;
+  }
+
+  function getLocalHours() {
+    var override = getTimeOverride();
+    if (override !== null) return override;
+
+    var now = new Date();
+    return now.getHours() + now.getMinutes() / 60 + now.getSeconds() / 3600;
+  }
+
+  function getNightFactor(hours) {
+    if (hours >= SUNRISE_HOUR + TWILIGHT_HOURS && hours <= SUNSET_HOUR - TWILIGHT_HOURS) {
+      return 0;
+    }
+    if (hours <= SUNRISE_HOUR - TWILIGHT_HOURS || hours >= SUNSET_HOUR + TWILIGHT_HOURS) {
+      return 1;
+    }
+    if (hours < SUNRISE_HOUR + TWILIGHT_HOURS) {
+      return 1 - (hours - (SUNRISE_HOUR - TWILIGHT_HOURS)) / (2 * TWILIGHT_HOURS);
+    }
+    return (hours - (SUNSET_HOUR - TWILIGHT_HOURS)) / (2 * TWILIGHT_HOURS);
+  }
+
+  function getSunPosition(hours) {
+    if (hours < SUNRISE_HOUR || hours > SUNSET_HOUR) return null;
+
+    var t = (hours - SUNRISE_HOUR) / (SUNSET_HOUR - SUNRISE_HOUR);
+    var sunR = Math.max(28, width * 0.035);
+    var arc = Math.sin(t * Math.PI);
+    return {
+      x: width * (0.06 + 0.88 * t),
+      y: layout.horizon - arc * layout.horizon * 0.72 + sunR * 0.25,
+      r: sunR,
+      t: t,
+    };
+  }
+
+  function applyPalette(nightFactor) {
+    SKY_TOP = lerpColor(DAY.skyTop, NIGHT.skyTop, nightFactor);
+    SKY_BOTTOM = lerpColor(DAY.skyBottom, NIGHT.skyBottom, nightFactor);
+    SUN = lerpColor(DAY.sun, NIGHT.sun, nightFactor);
+    CLOUD = lerpColor(DAY.cloud, NIGHT.cloud, nightFactor);
+    CLOUD_HIGHLIGHT = lerpColor(DAY.cloudHi, NIGHT.cloudHi, nightFactor);
+    OCEAN_LIGHT = lerpColor(DAY.oceanLight, NIGHT.oceanLight, nightFactor);
+    OCEAN_MID = lerpColor(DAY.oceanMid, NIGHT.oceanMid, nightFactor);
+    OCEAN_DEEP = lerpColor(DAY.oceanDeep, NIGHT.oceanDeep, nightFactor);
+    FOAM = lerpColor(DAY.foam, NIGHT.foam, nightFactor);
+    SAND = lerpColor(DAY.sand, NIGHT.sand, nightFactor);
+    SAND_SHADOW = lerpColor(DAY.sandShadow, NIGHT.sandShadow, nightFactor);
+    OUTLINE = lerpColor(DAY.outline, NIGHT.outline, nightFactor);
+  }
+
+  function updateTimeOfDay() {
+    var hours = getLocalHours();
+    var nightFactor = getNightFactor(hours);
+    applyPalette(nightFactor);
+    timeOfDay.hours = hours;
+    timeOfDay.nightFactor = nightFactor;
+    timeOfDay.sun = getSunPosition(hours);
+    var nightText = hours >= SUNSET_HOUR - 1 || hours < SUNRISE_HOUR;
+    document.body.classList.toggle("night-mode", nightText);
+    document.body.style.background = SKY_BOTTOM;
+  }
+
+  function initStars() {
+    stars = [];
+    for (var i = 0; i < 90; i += 1) {
+      stars.push({
+        x: rand(0, width),
+        y: rand(0, layout.horizon * 0.92),
+        r: rand(0.6, 1.8),
+        phase: rand(0, Math.PI * 2),
+      });
+    }
+  }
+
+  function arePeopleOut() {
+    var hours = timeOfDay.hours;
+    return hours >= BEACH_OPEN_HOUR && hours < BEACH_CLOSE_HOUR;
+  }
+
   function resize() {
     dpr = window.devicePixelRatio || 1;
     width = window.innerWidth;
@@ -69,8 +233,8 @@
     canvas.style.height = height + "px";
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-    layout.horizon = height * 0.34;
-    layout.shoreBase = height * 0.6;
+    layout.horizon = height * SKY_RATIO;
+    layout.shoreBase = height * (SKY_RATIO + (1 - SKY_RATIO) * OCEAN_SHARE);
   }
 
   function initCoastline() {
@@ -87,7 +251,7 @@
 
   function coastY(x, t) {
     var base = layout.shoreBase;
-    var amp = Math.max(24, height * 0.034);
+    var amp = Math.max(14, height * 0.022);
     var y = base;
 
     y += Math.sin(x * 0.0026 + 1.1) * amp * 0.55;
@@ -136,7 +300,7 @@
     for (var i = 0; i < 7; i += 1) {
       clouds.push({
         x: rand(0, width),
-        y: rand(height * 0.04, height * 0.22),
+        y: rand(height * 0.04, layout.horizon * 0.55),
         scale: rand(0.55, 1.15),
         speed: rand(8, 22),
       });
@@ -171,19 +335,76 @@
     ctx.restore();
   }
 
-  function drawSky() {
+  function drawSky(t) {
     var grad = ctx.createLinearGradient(0, 0, 0, layout.horizon);
     grad.addColorStop(0, SKY_TOP);
     grad.addColorStop(1, SKY_BOTTOM);
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, width, layout.horizon);
 
-    var sunR = Math.max(28, width * 0.035);
-    var sunX = width * 0.68;
-    var sunY = height * 0.1;
+    if (timeOfDay.nightFactor > 0.08) {
+      drawStars(t);
+    }
+
+    if (timeOfDay.nightFactor > 0.45) {
+      drawMoon();
+    }
+
+    if (timeOfDay.sun) {
+      drawSun(timeOfDay.sun);
+    }
+  }
+
+  function drawStars(t) {
+    var nf = timeOfDay.nightFactor;
+    stars.forEach(function (star) {
+      var twinkle = 0.55 + 0.45 * Math.sin(t * 1.8 + star.phase);
+      ctx.globalAlpha = nf * twinkle * 0.9;
+      ctx.fillStyle = "#f5f8ff";
+      ctx.beginPath();
+      ctx.arc(star.x, star.y, star.r, 0, Math.PI * 2);
+      ctx.fill();
+    });
+    ctx.globalAlpha = 1;
+  }
+
+  function drawMoon() {
+    var nf = timeOfDay.nightFactor;
+    var moonR = Math.max(34, width * 0.045);
+    var moonX = width * 0.74;
+    var moonY = layout.horizon * 0.24;
+
+    ctx.globalAlpha = Math.min(1, (nf - 0.35) * 1.4);
     ctx.beginPath();
-    ctx.arc(sunX, sunY, sunR, 0, Math.PI * 2);
-    ctx.fillStyle = SUN;
+    ctx.arc(moonX, moonY, moonR, 0, Math.PI * 2);
+    ctx.fillStyle = "#eef3fa";
+    ctx.fill();
+    ctx.lineWidth = Math.max(1.5, width * 0.0018);
+    ctx.strokeStyle = OUTLINE;
+    ctx.stroke();
+
+    ctx.fillStyle = "rgba(130, 145, 170, 0.35)";
+    ctx.beginPath();
+    ctx.arc(moonX - moonR * 0.28, moonY - moonR * 0.12, moonR * 0.24, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+
+  function drawSun(sun) {
+    var edge = Math.min(sun.t, 1 - sun.t) * 3.5;
+    var sunColor = lerpColor("#ffd028", "#ff8a3d", Math.max(0, 1 - edge));
+    var glow = Math.max(0, 1 - edge * 0.85);
+
+    if (glow > 0.05) {
+      ctx.beginPath();
+      ctx.arc(sun.x, sun.y, sun.r * (2.2 + glow), 0, Math.PI * 2);
+      ctx.fillStyle = "rgba(255, 170, 70, " + (0.08 + glow * 0.14) + ")";
+      ctx.fill();
+    }
+
+    ctx.beginPath();
+    ctx.arc(sun.x, sun.y, sun.r, 0, Math.PI * 2);
+    ctx.fillStyle = sunColor;
     ctx.fill();
     ctx.lineWidth = Math.max(2, width * 0.0025);
     ctx.strokeStyle = OUTLINE;
@@ -191,10 +412,12 @@
   }
 
   function waveY(x, layer, t) {
-    var amp = 6 + layer * 4;
+    var oceanH = layout.shoreBase - layout.horizon;
+    var amp = 3 + layer * 2.5;
     var freq = 0.004 + layer * 0.0015;
     var speed = 0.7 + layer * 0.35;
-    return layout.horizon + layer * 18 + Math.sin(x * freq + t * speed) * amp + Math.sin(x * freq * 2.1 - t * speed * 0.6) * (amp * 0.35);
+    var layerStep = oceanH * 0.28;
+    return layout.horizon + layer * layerStep + Math.sin(x * freq + t * speed) * amp + Math.sin(x * freq * 2.1 - t * speed * 0.6) * (amp * 0.35);
   }
 
   function drawOcean(t) {
@@ -210,8 +433,8 @@
         for (var x = 8; x <= width; x += 8) {
           ctx.lineTo(x, waveY(x, layer.offset, t));
         }
-        for (x = width; x >= 0; x -= 8) {
-          ctx.lineTo(x, coastY(x, t) + layer.offset * 4);
+        for (var x2 = width; x2 >= 0; x2 -= 8) {
+          ctx.lineTo(x2, coastY(x2, t) + layer.offset * 4);
         }
         ctx.closePath();
       }, layer.color);
@@ -224,8 +447,8 @@
       if (fx === 0) ctx.moveTo(0, top);
       else ctx.lineTo(fx, top);
     }
-    for (fx = width; fx >= 0; fx -= 5) {
-      ctx.lineTo(fx, sandYAt(fx, t) - 2);
+    for (var fx2 = width; fx2 >= 0; fx2 -= 5) {
+      ctx.lineTo(fx2, sandYAt(fx2, t) - 2);
     }
     ctx.closePath();
     ctx.fill();
@@ -255,12 +478,119 @@
     for (var x = 6; x <= width; x += 6) {
       ctx.lineTo(x, sandYAt(x, t) + 8);
     }
-    for (x = width; x >= 0; x -= 6) {
-      ctx.lineTo(x, sandYAt(x, t) + 28);
+    for (var x2 = width; x2 >= 0; x2 -= 6) {
+      ctx.lineTo(x2, sandYAt(x2, t) + 28);
     }
     ctx.closePath();
     ctx.fill();
     ctx.globalAlpha = 1;
+  }
+
+  function drawPalmFrond(originX, originY, angle, length, leafColor, leafDark) {
+    var dx = Math.cos(angle);
+    var dy = Math.sin(angle);
+    var px = -dy;
+    var py = dx;
+    var maxW = length * 0.14;
+    var gravity = length * 0.28;
+
+    var tipX = dx * length;
+    var tipY = dy * length + gravity;
+    var mx = dx * length * 0.5;
+    var my = dy * length * 0.5 + gravity * 0.12;
+
+    ctx.save();
+    ctx.translate(originX, originY);
+
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.quadraticCurveTo(mx + px * maxW, my + py * maxW, tipX, tipY);
+    ctx.quadraticCurveTo(mx - px * maxW, my - py * maxW, 0, 0);
+    ctx.closePath();
+    ctx.fillStyle = leafColor;
+    ctx.fill();
+    ctx.lineWidth = Math.max(1.3, width * 0.0014);
+    ctx.lineJoin = "round";
+    ctx.strokeStyle = OUTLINE;
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.quadraticCurveTo(mx, my, tipX, tipY);
+    ctx.lineWidth = Math.max(1, width * 0.0011);
+    ctx.strokeStyle = leafDark;
+    ctx.stroke();
+
+    ctx.restore();
+  }
+
+  function drawPalm(x, groundY, scale, lean) {
+    var s = scale * Math.max(0.75, height / 950);
+    var trunkH = 122 * s;
+    var baseW = 9 * s;
+    var topW = 5 * s;
+    var bend = lean * 55 * s;
+    var nf = timeOfDay.nightFactor;
+    var trunkColor = lerpColor("#a06a3a", "#4a3520", nf);
+    var leafColor = lerpColor("#5aa832", "#1a4533", nf);
+    var leafDark = lerpColor("#3f8f26", "#143628", nf);
+    var crownX = bend;
+    var crownY = -trunkH;
+    var fronds = [
+      { angle: -3.05, len: 1.0 },
+      { angle: -2.68, len: 1.12 },
+      { angle: -2.32, len: 1.18 },
+      { angle: -1.96, len: 1.12 },
+      { angle: -1.62, len: 0.95 },
+      { angle: -1.28, len: 1.12 },
+      { angle: -0.92, len: 1.18 },
+      { angle: -0.56, len: 1.12 },
+      { angle: -0.16, len: 1.0 },
+    ];
+    var i;
+
+    ctx.save();
+    ctx.translate(x, groundY);
+
+    fillAndStroke(function () {
+      ctx.moveTo(-baseW, 0);
+      ctx.quadraticCurveTo(-baseW * 0.4 + bend * 0.5, -trunkH * 0.5, crownX - topW, crownY);
+      ctx.lineTo(crownX + topW, crownY);
+      ctx.quadraticCurveTo(baseW * 0.9 + bend * 0.5, -trunkH * 0.5, baseW, 0);
+      ctx.closePath();
+    }, trunkColor);
+
+    for (i = 0; i < fronds.length; i += 1) {
+      drawPalmFrond(
+        crownX,
+        crownY,
+        fronds[i].angle,
+        92 * s * fronds[i].len,
+        leafColor,
+        leafDark
+      );
+    }
+
+    ctx.restore();
+  }
+
+  function palmGroundY(yOffset) {
+    var sandH = height - layout.shoreBase;
+    return layout.shoreBase + sandH * (0.4 + (yOffset || 0));
+  }
+
+  function drawPalms() {
+    var specs = [
+      { x: 0.045, scale: 1.05, lean: -0.15, yOff: 0 },
+      { x: 0.105, scale: 0.72, lean: -0.1, yOff: 0.05 },
+      { x: 0.955, scale: 1.05, lean: 0.15, yOff: 0 },
+      { x: 0.895, scale: 0.74, lean: 0.1, yOff: 0.04 },
+    ];
+
+    specs.forEach(function (spec) {
+      var px = width * spec.x;
+      drawPalm(px, palmGroundY(spec.yOff), spec.scale, spec.lean);
+    });
   }
 
   function initTowels() {
@@ -335,6 +665,7 @@
   }
 
   function drawTowels() {
+    if (!arePeopleOut()) return;
     towels.forEach(drawTowel);
   }
 
@@ -358,6 +689,8 @@
   }
 
   function hitTestCharacter(px, py) {
+    if (!arePeopleOut()) return null;
+
     var hit = null;
     characters
       .slice()
@@ -517,6 +850,8 @@
   }
 
   function updateCharacters(dt) {
+    if (!arePeopleOut()) return;
+
     characters = characters.filter(function (c) {
       if (c.state === "fleeing") {
         c.x += c.facing * c.speed * dt;
@@ -552,6 +887,8 @@
   }
 
   function drawCharacters() {
+    if (!arePeopleOut()) return;
+
     characters
       .slice()
       .sort(function (a, b) {
@@ -608,17 +945,18 @@
       cloud.x += cloud.speed * (1 / 60);
       if (cloud.x > width + 120) {
         cloud.x = -120;
-        cloud.y = rand(height * 0.04, height * 0.22);
+        cloud.y = rand(height * 0.04, layout.horizon * 0.55);
       }
       drawCloud(cloud.x, cloud.y, cloud.scale);
     });
   }
 
   function draw(t) {
-    drawSky();
+    drawSky(t);
     drawClouds(t);
     drawOcean(t);
     drawSand(t);
+    drawPalms();
     drawTowels();
     drawCharacters();
   }
@@ -630,6 +968,7 @@
     last = now;
     time += dt;
 
+    updateTimeOfDay();
     updateCharacters(dt);
     ctx.clearRect(0, 0, width, height);
     draw(time);
@@ -640,15 +979,18 @@
   function boot() {
     resize();
     initCoastline();
+    initStars();
     initClouds();
     initTowels();
     initCharacters();
+    updateTimeOfDay();
     requestAnimationFrame(frame);
   }
 
   window.addEventListener("resize", function () {
     resize();
     initCoastline();
+    initStars();
     initClouds();
     initTowels();
     initCharacters();
