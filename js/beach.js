@@ -579,19 +579,12 @@
     return layout.shoreBase + sandH * (0.4 + (yOffset || 0));
   }
 
-  function drawPalms() {
-    var specs = [
-      { x: 0.045, scale: 1.05, lean: -0.15, yOff: 0 },
-      { x: 0.105, scale: 0.72, lean: -0.1, yOff: 0.05 },
-      { x: 0.955, scale: 1.05, lean: 0.15, yOff: 0 },
-      { x: 0.895, scale: 0.74, lean: 0.1, yOff: 0.04 },
-    ];
-
-    specs.forEach(function (spec) {
-      var px = width * spec.x;
-      drawPalm(px, palmGroundY(spec.yOff), spec.scale, spec.lean);
-    });
-  }
+  var PALM_SPECS = [
+    { x: 0.045, scale: 1.05, lean: -0.15, yOff: 0 },
+    { x: 0.105, scale: 0.72, lean: -0.1, yOff: 0.05 },
+    { x: 0.955, scale: 1.05, lean: 0.15, yOff: 0 },
+    { x: 0.895, scale: 0.74, lean: 0.1, yOff: 0.04 },
+  ];
 
   function initTowels() {
     towels = [];
@@ -886,28 +879,55 @@
     });
   }
 
-  function drawCharacters() {
-    if (!arePeopleOut()) return;
+  function characterFeetY(c) {
+    var s = characterScale(c);
+    var sitting = c.kind === "sitter" && c.state !== "fleeing";
+    return c.y + (sitting ? 10 : 18) * s;
+  }
 
-    characters
-      .slice()
-      .sort(function (a, b) {
-        return a.y - b.y;
-      })
-      .forEach(function (c) {
-        if (c.state === "gone") return;
-        drawStickPerson(
-          c.x,
-          c.y,
-          c.scale,
-          c.facing,
-          c.walkPhase || 0,
-          c.kind === "sitter" && c.state !== "fleeing",
-          c.shirt,
-          c.shorts,
-          c.hat
-        );
+  function drawActors() {
+    var items = [];
+
+    PALM_SPECS.forEach(function (spec) {
+      var px = width * spec.x;
+      var groundY = palmGroundY(spec.yOff);
+      items.push({
+        baseY: groundY,
+        render: function () {
+          drawPalm(px, groundY, spec.scale, spec.lean);
+        },
       });
+    });
+
+    if (arePeopleOut()) {
+      characters.forEach(function (c) {
+        if (c.state === "gone") return;
+        items.push({
+          baseY: characterFeetY(c),
+          render: function () {
+            drawStickPerson(
+              c.x,
+              c.y,
+              c.scale,
+              c.facing,
+              c.walkPhase || 0,
+              c.kind === "sitter" && c.state !== "fleeing",
+              c.shirt,
+              c.shorts,
+              c.hat
+            );
+          },
+        });
+      });
+    }
+
+    items.sort(function (a, b) {
+      return a.baseY - b.baseY;
+    });
+
+    items.forEach(function (item) {
+      item.render();
+    });
   }
 
   function isOverlayElement(element) {
@@ -956,9 +976,8 @@
     drawClouds(t);
     drawOcean(t);
     drawSand(t);
-    drawPalms();
     drawTowels();
-    drawCharacters();
+    drawActors();
   }
 
   var last = performance.now();
