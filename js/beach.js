@@ -52,6 +52,7 @@
 
   var SKY_RATIO = 0.6;
   var OCEAN_SHARE = 0.39;
+  var BLEED = 80;
 
   var SHIRT_COLORS = ["#ff6b6b", "#4ecdc4", "#ffe66d", "#ff8fab", "#95e1d3", "#f38181"];
   var SHORT_COLORS = ["#3d6d88", "#2a5268", "#5a8fad", "#234563"];
@@ -429,11 +430,11 @@
 
     layers.forEach(function (layer) {
       fillAndStroke(function () {
-        ctx.moveTo(0, waveY(0, layer.offset, t));
-        for (var x = 8; x <= width; x += 8) {
+        ctx.moveTo(-BLEED, waveY(-BLEED, layer.offset, t));
+        for (var x = -BLEED + 8; x <= width + BLEED; x += 8) {
           ctx.lineTo(x, waveY(x, layer.offset, t));
         }
-        for (var x2 = width; x2 >= 0; x2 -= 8) {
+        for (var x2 = width + BLEED; x2 >= -BLEED; x2 -= 8) {
           ctx.lineTo(x2, coastY(x2, t) + layer.offset * 4);
         }
         ctx.closePath();
@@ -442,19 +443,19 @@
 
     ctx.fillStyle = FOAM;
     ctx.beginPath();
-    for (var fx = 0; fx <= width; fx += 5) {
+    for (var fx = -BLEED; fx <= width + BLEED; fx += 5) {
       var top = coastY(fx, t) + Math.sin(fx * 0.028 + t * 1.4) * 4 + Math.sin(fx * 0.011 - t * 0.7) * 2;
-      if (fx === 0) ctx.moveTo(0, top);
+      if (fx === -BLEED) ctx.moveTo(-BLEED, top);
       else ctx.lineTo(fx, top);
     }
-    for (var fx2 = width; fx2 >= 0; fx2 -= 5) {
+    for (var fx2 = width + BLEED; fx2 >= -BLEED; fx2 -= 5) {
       ctx.lineTo(fx2, sandYAt(fx2, t) - 2);
     }
     ctx.closePath();
     ctx.fill();
     strokePath(function () {
-      ctx.moveTo(0, coastY(0, t));
-      for (var fx = 8; fx <= width; fx += 5) {
+      ctx.moveTo(-BLEED, coastY(-BLEED, t));
+      for (var fx = -BLEED + 8; fx <= width + BLEED; fx += 5) {
         ctx.lineTo(fx, coastY(fx, t) + Math.sin(fx * 0.028 + t * 1.4) * 3);
       }
     }, Math.max(1.5, width * 0.0018));
@@ -462,23 +463,23 @@
 
   function drawSand(t) {
     fillAndStroke(function () {
-      ctx.moveTo(0, sandYAt(0, t));
-      for (var x = 6; x <= width; x += 6) {
+      ctx.moveTo(-BLEED, sandYAt(-BLEED, t));
+      for (var x = -BLEED + 6; x <= width + BLEED; x += 6) {
         ctx.lineTo(x, sandYAt(x, t));
       }
-      ctx.lineTo(width, height);
-      ctx.lineTo(0, height);
+      ctx.lineTo(width + BLEED, height + BLEED);
+      ctx.lineTo(-BLEED, height + BLEED);
       ctx.closePath();
     }, SAND);
 
     ctx.fillStyle = SAND_SHADOW;
     ctx.globalAlpha = 0.22;
     ctx.beginPath();
-    ctx.moveTo(0, sandYAt(0, t) + 8);
-    for (var x = 6; x <= width; x += 6) {
+    ctx.moveTo(-BLEED, sandYAt(-BLEED, t) + 8);
+    for (var x = -BLEED + 6; x <= width + BLEED; x += 6) {
       ctx.lineTo(x, sandYAt(x, t) + 8);
     }
-    for (var x2 = width; x2 >= 0; x2 -= 6) {
+    for (var x2 = width + BLEED; x2 >= -BLEED; x2 -= 6) {
       ctx.lineTo(x2, sandYAt(x2, t) + 28);
     }
     ctx.closePath();
