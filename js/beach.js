@@ -44,7 +44,7 @@
     outline: "#7a9cb5",
   };
 
-  var SUNRISE_HOUR = 6;
+  var SUNRISE_HOUR = 8;
   var SUNSET_HOUR = 20;
   var BEACH_OPEN_HOUR = 9;
   var BEACH_CLOSE_HOUR = 19;
@@ -201,7 +201,7 @@
     timeOfDay.hours = hours;
     timeOfDay.nightFactor = nightFactor;
     timeOfDay.sun = getSunPosition(hours);
-    var nightText = hours >= SUNSET_HOUR - 1 || hours < SUNRISE_HOUR;
+    var nightText = hours > SUNSET_HOUR - 1 || hours <= SUNRISE_HOUR;
     document.body.classList.toggle("night-mode", nightText);
     document.body.style.background = SKY_BOTTOM;
   }
