@@ -527,7 +527,7 @@
 
   function drawPalm(x, groundY, scale, lean) {
     var s = scale * Math.max(0.75, height / 950);
-    var trunkH = 225 * s;
+    var trunkH = 250 * s;
     var baseW = 9 * s;
     var topW = 5 * s;
     var bend = lean * 55 * s;
